@@ -118,7 +118,7 @@ class QueryBuilder
 
     protected function getFilter(string $filter):? FilterInterface
     {
-        if ($this->filterList->has($filter)) {
+        if (!$this->filterList->has($filter)) {
             throw new AuthorizationException(sprintf(
                 "Filter %s does not exist in %s",
                 $filter,
