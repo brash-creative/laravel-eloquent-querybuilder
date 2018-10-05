@@ -75,6 +75,58 @@ class QueryBuilder
         return $this->builder;
     }
 
+    public function inject(callable $callable): QueryBuilder
+    {
+        $callable($this->builder);
+
+        return $this;
+    }
+
+    public function find(int $id): Model
+    {
+        $this->applyFilters();
+
+        $query = $this->getBuilder()
+            ->with($this->getWith())
+            ->withCount($this->getWithCount())
+            ->where('id', $id);
+
+        return $query->firstOrFail();
+    }
+
+    public function get(): Collection
+    {
+        $this->applyFilters();
+
+        $orderBy = $this->getOrderBy();
+
+        $query = $this->getBuilder()
+            ->with($this->getWith())
+            ->withCount($this->getWithCount())
+            ->orderBy($orderBy->getColumn(), $orderBy->getDirection());
+
+        return $query->get();
+    }
+
+    public function paginate(): LengthAwarePaginator
+    {
+        $this->applyFilters();
+
+        $query = $this->getBuilder()
+            ->with($this->getWith())
+            ->withCount($this->getWithCount())
+            ->orderBy($this->getOrderBy()->getColumn(), $this->getOrderBy()->getDirection());
+
+        return $query->paginate();
+    }
+
+    public function count(): int
+    {
+        $this->applyFilters();
+
+        return $this->getBuilder()->count();
+    }
+
     protected function getOrderBy(): OrderBy
     {
         if ($this->request->query->has('sort')) {
@@ -127,50 +179,5 @@ class QueryBuilder
         }
 
         return $this->filterList->get($filter);
-    }
-
-    public function find(int $id): Model
-    {
-        $this->applyFilters();
-
-        $query = $this->getBuilder()
-            ->with($this->getWith())
-            ->withCount($this->getWithCount())
-            ->where('id', $id);
-
-        return $query->firstOrFail();
-    }
-
-    public function get(): Collection
-    {
-        $this->applyFilters();
-
-        $orderBy = $this->getOrderBy();
-
-        $query = $this->getBuilder()
-            ->with($this->getWith())
-            ->withCount($this->getWithCount())
-            ->orderBy($orderBy->getColumn(), $orderBy->getDirection());
-
-        return $query->get();
-    }
-
-    public function paginate(): LengthAwarePaginator
-    {
-        $this->applyFilters();
-
-        $query = $this->getBuilder()
-            ->with($this->getWith())
-            ->withCount($this->getWithCount())
-            ->orderBy($this->getOrderBy()->getColumn(), $this->getOrderBy()->getDirection());
-
-        return $query->paginate();
-    }
-
-    public function count(): int
-    {
-        $this->applyFilters();
-
-        return $this->getBuilder()->count();
     }
 }
