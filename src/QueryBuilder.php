@@ -15,9 +15,9 @@ use Illuminate\Http\Request;
 class QueryBuilder
 {
     /**
-     * @var Builder
+     * @var Model
      */
-    protected $builder;
+    protected $model;
 
     /**
      * @var array
@@ -28,6 +28,11 @@ class QueryBuilder
      * @var array
      */
     protected $withCount = [];
+
+    /**
+     * @var array
+     */
+    protected $injections = [];
 
     /**
      * @var FilterList|FilterInterface[]
@@ -47,62 +52,43 @@ class QueryBuilder
      * @param Request|null    $request
      */
     public function __construct(
-        $builder,
+        Model $model,
         FilterList $filterList = null,
         Request $request = null
     ) {
-        $this->initBuilder($builder);
-
+        $this->model = $model;
         $this->request = $request ?? request();
         $this->filterList = $filterList ?? new FilterList;
     }
 
-    private function initBuilder($builder)
+    private function query(): Builder
     {
-        if (!$builder instanceof Model && !$builder instanceof Builder) {
-            throw new UnexpectedValueException(sprintf(
-                "Builder must be instance of %s or %s",
-                Builder::class,
-                Model::class
-            ));
-        }
+        $query = (clone $this->model)::query()
+            ->with($this->getWith())
+            ->withCount($this->getWithCount());
 
-        $this->builder = $builder instanceof Model ? $builder->newQuery() : $builder;
-    }
+        $this->applyAll($query);
 
-    public function getBuilder(): Builder
-    {
-        return $this->builder;
+        return $query;
     }
 
     public function inject(callable $callable): QueryBuilder
     {
-        $callable($this->builder);
+        $this->injections[] = $callable;
 
         return $this;
     }
 
     public function find(int $id): Model
     {
-        $this->applyFilters();
-
-        $query = $this->getBuilder()
-            ->with($this->getWith())
-            ->withCount($this->getWithCount())
-            ->where('id', $id);
-
-        return $query->firstOrFail();
+        return $this->query()->where('id', $id)->firstOrFail();
     }
 
     public function get(): Collection
     {
-        $this->applyFilters();
-
         $orderBy = $this->getOrderBy();
 
-        $query = $this->getBuilder()
-            ->with($this->getWith())
-            ->withCount($this->getWithCount())
+        $query = $this->query()
             ->orderBy($orderBy->getColumn(), $orderBy->getDirection());
 
         return $query->get();
@@ -112,19 +98,17 @@ class QueryBuilder
     {
         $this->applyFilters();
 
-        $query = $this->getBuilder()
-            ->with($this->getWith())
-            ->withCount($this->getWithCount())
-            ->orderBy($this->getOrderBy()->getColumn(), $this->getOrderBy()->getDirection());
+        $orderBy = $this->getOrderBy();
+
+        $query = $this->query()
+            ->orderBy($orderBy->getColumn(), $orderBy->getDirection());
 
         return $query->paginate();
     }
 
     public function count(): int
     {
-        $this->applyFilters();
-
-        return $this->getBuilder()->count();
+        return $this->query()->count();
     }
 
     protected function getOrderBy(): OrderBy
@@ -157,14 +141,27 @@ class QueryBuilder
         return $this->getWith('includeCount');
     }
 
-    protected function applyFilters()
+    protected function applyAll(Builder $builder)
+    {
+        $this->applyInjections($builder);
+        $this->applyFilters($builder);
+    }
+
+    protected function applyInjections(Builder $builder)
+    {
+        foreach ($this->injections as $injection) {
+            $injection($builder);
+        }
+    }
+
+    protected function applyFilters(Builder $builder)
     {
         $filterArray = (array) $this->request->query->get('filter');
 
         foreach ($filterArray as $key => $value) {
             $filter = $this->getFilter($key);
 
-            $filter($this->builder, $value);
+            $filter($builder, $value);
         }
     }
 
