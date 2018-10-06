@@ -4,7 +4,6 @@ namespace Brash\QueryBuilder;
 
 use Brash\QueryBuilder\Filter\FilterInterface;
 use Brash\QueryBuilder\Filter\FilterList;
-use UnexpectedValueException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -47,7 +46,7 @@ class QueryBuilder
     /**
      * QueryBuilderRepository constructor.
      *
-     * @param Builder|Model   $builder
+     * @param Model   $model
      * @param FilterList|null $filterList
      * @param Request|null    $request
      */
@@ -61,17 +60,6 @@ class QueryBuilder
         $this->filterList = $filterList ?? new FilterList;
     }
 
-    private function query(): Builder
-    {
-        $query = (clone $this->model)::query()
-            ->with($this->getWith())
-            ->withCount($this->getWithCount());
-
-        $this->applyAll($query);
-
-        return $query;
-    }
-
     public function inject(callable $callable): QueryBuilder
     {
         $this->injections[] = $callable;
@@ -81,7 +69,9 @@ class QueryBuilder
 
     public function find(int $id): Model
     {
-        return $this->query()->where('id', $id)->firstOrFail();
+        $query = $this->query()->where('id', $id);
+
+        return $query->firstOrFail();
     }
 
     public function get(): Collection
@@ -96,8 +86,6 @@ class QueryBuilder
 
     public function paginate(): LengthAwarePaginator
     {
-        $this->applyFilters();
-
         $orderBy = $this->getOrderBy();
 
         $query = $this->query()
@@ -109,6 +97,18 @@ class QueryBuilder
     public function count(): int
     {
         return $this->query()->count();
+    }
+
+
+    protected function query(): Builder
+    {
+        $query = (clone $this->model)::query()
+            ->with($this->getWith())
+            ->withCount($this->getWithCount());
+
+        $this->applyAll($query);
+
+        return $query;
     }
 
     protected function getOrderBy(): OrderBy
