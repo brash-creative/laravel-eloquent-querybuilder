@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 interface QueryBuilderInterface
 {
+    public function getModel(): Model;
+
     public function inject(callable $callable): QueryBuilderInterface;
 
     public function find(int $id): Model;

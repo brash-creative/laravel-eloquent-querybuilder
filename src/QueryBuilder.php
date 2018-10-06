@@ -60,6 +60,11 @@ class QueryBuilder implements QueryBuilderInterface
         $this->filterList = $filterList ?? new FilterList;
     }
 
+    public function getModel(): Model
+    {
+        return $this->model;
+    }
+
     public function inject(callable $callable): QueryBuilderInterface
     {
         $this->injections[] = $callable;
