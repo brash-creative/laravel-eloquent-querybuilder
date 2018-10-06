@@ -60,7 +60,7 @@ class QueryBuilder implements QueryBuilderInterface
         $this->filterList = $filterList ?? new FilterList;
     }
 
-    public function inject(callable $callable): QueryBuilder
+    public function inject(callable $callable): QueryBuilderInterface
     {
         $this->injections[] = $callable;
 

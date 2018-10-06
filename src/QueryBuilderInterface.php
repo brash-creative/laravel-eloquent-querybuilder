@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 interface QueryBuilderInterface
 {
-    public function inject(callable $callable): QueryBuilder;
+    public function inject(callable $callable): QueryBuilderInterface;
 
     public function find(int $id): Model;
 
