@@ -18,5 +18,5 @@ interface QueryBuilderInterface
 
     public function paginate(): LengthAwarePaginator;
 
-    public function count();
+    public function count(): int;
 }
