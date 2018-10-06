@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
-class QueryBuilder
+class QueryBuilder implements QueryBuilderInterface
 {
     /**
      * @var Model
@@ -98,7 +98,6 @@ class QueryBuilder
     {
         return $this->query()->count();
     }
-
 
     protected function query(): Builder
     {
