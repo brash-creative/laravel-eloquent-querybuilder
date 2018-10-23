@@ -4,7 +4,6 @@ namespace Brash\QueryBuilder;
 
 use Brash\QueryBuilder\Filter\FilterInterface;
 use Brash\QueryBuilder\Filter\FilterList;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -72,61 +71,31 @@ class QueryBuilder implements QueryBuilderInterface
         return $this;
     }
 
-    public function find(int $id): Model
-    {
-        $query = $this->query()->where('id', $id);
-
-        return $query->firstOrFail();
-    }
-
     public function get(): Collection
     {
-        $orderBy = $this->getOrderBy();
-
-        $query = $this->query()
-            ->orderBy($orderBy->getColumn(), $orderBy->getDirection());
-
-        return $query->get();
+        return $this->getQuery()->get();
     }
 
     public function paginate(): LengthAwarePaginator
     {
-        $orderBy = $this->getOrderBy();
-
-        $query = $this->query()
-            ->orderBy($orderBy->getColumn(), $orderBy->getDirection());
-
-        return $query->paginate();
+        return $this->getQuery()->paginate();
     }
 
     public function count(): int
     {
-        return $this->query()->count();
+        return $this->getQuery()->count();
     }
 
-    protected function query(): Builder
+    public function getQuery(): Builder
     {
-        $query = (clone $this->model)::query()
-            ->with($this->getWith())
-            ->withCount($this->getWithCount());
+        $query = (clone $this->model)
+            ->query()
+            ->with($this->with)
+            ->withCount($this->withCount);
 
         $this->applyAll($query);
 
         return $query;
-    }
-
-    protected function getOrderBy(): OrderBy
-    {
-        if ($this->request->query->has('sort')) {
-            $request = $this->request->query->get('sort');
-            $sort = (array) explode(',', $request) + ['created_at', 'asc'];
-
-            [$column, $direction] = $sort;
-
-            return new OrderBy($column, $direction);
-        }
-
-        return new OrderBy;
     }
 
     protected function getWith($key = 'include'): array
@@ -149,6 +118,7 @@ class QueryBuilder implements QueryBuilderInterface
     {
         $this->applyInjections($builder);
         $this->applyFilters($builder);
+        $this->applySort($builder);
     }
 
     protected function applyInjections(Builder $builder)
@@ -163,22 +133,19 @@ class QueryBuilder implements QueryBuilderInterface
         $filterArray = (array) $this->request->query->get('filter');
 
         foreach ($filterArray as $key => $value) {
-            $filter = $this->getFilter($key);
-
-            $filter($builder, $value);
+            if ($this->filterList->has($key)) {
+                $filter = $this->filterList->get($key);
+                $filter($builder, $value);
+            }
         }
     }
 
-    protected function getFilter(string $filter):? FilterInterface
+    protected function applySort(Builder $builder)
     {
-        if (!$this->filterList->has($filter)) {
-            throw new AuthorizationException(sprintf(
-                "Filter %s does not exist in %s",
-                $filter,
-                get_class($this)
-            ));
-        }
+        $sortArray = (array) $this->request->query->get('sort');
 
-        return $this->filterList->get($filter);
+        foreach ($sortArray as $column => $direction) {
+            $builder->orderBy($column, $direction);
+        }
     }
 }
