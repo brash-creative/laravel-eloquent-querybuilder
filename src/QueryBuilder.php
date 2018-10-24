@@ -90,8 +90,8 @@ class QueryBuilder implements QueryBuilderInterface
     {
         $query = (clone $this->model)
             ->query()
-            ->with($this->with)
-            ->withCount($this->withCount);
+            ->with($this->getWith())
+            ->withCount($this->getWithCount());
 
         $this->applyAll($query);
 
